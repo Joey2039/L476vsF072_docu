@@ -185,99 +185,72 @@ the underlying library requires.
 
 No timing measurement was trusted until the implementation producing it was
 shown to be correct.
-Each algorithm was verified against published test vectors before any benchmark
-was run.
-
-AES-128-GCM was checked against a NIST Known Answer Test vector, confirming
-both the ciphertext and the authentication tag for a known key, nonce, and
-input.
-It was additionally checked with a round-trip test, where decryption of the
-produced ciphertext returns the original plaintext, and with a forgery-rejection
-test, where a modified tag is correctly rejected.
-
-Ascon-AEAD128 was checked against a vector from the Lightweight Cryptography
-Known Answer Test set, confirming the combined ciphertext and tag for a known
-key and nonce.
-It was likewise checked with a round-trip test and a forgery-rejection test.
-
+Each algorithm was checked against a published Known Answer Test vector, the
+NIST GCM vector for AES-128-GCM and a Lightweight Cryptography Known Answer Test
+vector for Ascon-AEAD128, confirming both the ciphertext and the authentication
+tag.
+Each was additionally checked with a round-trip test, where decryption returns
+the original plaintext, and a forgery-rejection test, where a modified tag is
+correctly rejected.
 Both verification routines run on the target hardware at startup, before the
-benchmark begins, and print a pass result over the serial link.
-A failure halts interpretation of any subsequent timing for that build.
+benchmark begins, print a pass result over the serial link, and halt on failure
+so that no subsequent timing for that build is interpreted.
 
 \section{Measurement Methodology}
-
-\subsection{Timing Source}
 \label{sec:timing-source}
 
 Both boards use the TIM2 timer as the timing source.
 TIM2 is a 32-bit timer on both families, configured identically on each board as
 a free-running up-counter driven by the internal clock with the prescaler set to
-zero.
-With a zero prescaler the counter increments once per processor clock cycle, so
-one tick equals one cycle.
-At 48\,MHz the 32-bit counter wraps approximately every 89 seconds, which is
-far longer than any single measurement.
-All elapsed-time computations use unsigned 32-bit subtraction, which handles a
-single wrap during a measurement correctly without special-case logic.
-
+zero, so the counter increments once per processor clock cycle and one tick
+equals one cycle.
+At 48\,MHz the 32-bit counter wraps approximately every 89 seconds, far longer
+than any single measurement, and all elapsed-time computations use unsigned
+32-bit subtraction, which handles a single wrap during a measurement correctly.
 The Cortex-M0 on the F072 does not provide the Data Watchpoint and Trace cycle
-counter available on the Cortex-M4F.
-Using TIM2 on both boards therefore gives a comparison between identically
-configured peripherals rather than between two architecturally different timing
-mechanisms.
-
-\subsection{Interrupt Masking and Warmup}
+counter available on the Cortex-M4F, so using TIM2 on both boards gives a
+comparison between identically configured peripherals rather than between two
+architecturally different timing mechanisms.
 
 The benchmark macro disables all maskable interrupts for the duration of the
-measured region and re-enables them afterward.
-This prevents the periodic system tick interrupt and any peripheral interrupts
-from polluting short measurements.
+measured region and re-enables them afterward, which prevents the periodic
+system tick interrupt and any peripheral interrupts from polluting short
+measurements.
 The effect was confirmed during validation, where masking reduced the
 per-iteration variation from roughly 28 ticks to zero on a reference workload.
-
-Each measurement runs the workload once before the timed iterations begin, and
-the result of this first run is discarded.
-This warmup primes the L476 ART accelerator and any related
-microarchitectural state.
-On the L476 the first run differs from the steady state by roughly 1.5\% at
+Each measurement also runs the workload once before the timed iterations begin
+and discards the result.
+This warmup primes the L476 ART accelerator and any related microarchitectural
+state, on which the first run differs from the steady state by roughly 1.5\% at
 small sizes.
 On the F072 there is no measurable warmup effect, because the Cortex-M0 has no
 instruction cache or branch predictor that could be cold.
 
-\subsection{Defeating Dead-Code Elimination}
-
 At higher optimization levels the compiler can remove a computation whose result
 is never used.
 To prevent this, each workload writes one byte of its output into a
-\texttt{volatile} variable.
-The \texttt{volatile} qualifier forces the compiler to produce the output, because
-it cannot prove the write is unnecessary.
+\texttt{volatile} variable, which forces the compiler to produce the output
+because it cannot prove the write is unnecessary.
 This protection is verified indirectly by checking that the smallest input size
 still records a non-zero time at every optimization level.
 
-\subsection{Scope of the Timed Region}
-
 The timed region contains only the authenticated-encryption operation.
-For AES-128-GCM the key schedule is performed once before the measurements
-begin and is not included.
+For AES-128-GCM the key schedule is performed once before the measurements begin
+and is not included.
 For Ascon-AEAD128 the single-pass interface performs key setup as part of the
 encryption call and cannot separate it, so the full call is timed.
 This treats the one-time setup symmetrically: the repeated per-call cost is
 measured for both, and the fixed setup that a real deployment would perform once
 is excluded from both where the interface allows.
-
 All measurements encrypt plaintext with no associated data.
-
-\subsection{Output Format and Offline Statistics}
 
 Each measured iteration is streamed over the serial link as a row of
 comma-separated values containing the algorithm, the board, the clock frequency,
 the input size, the iteration index, and the measured ticks.
-Summary statistics --- namely the median, minimum, maximum, and interquartile
-range --- are computed offline rather than on the device.
-This keeps the on-device harness minimal and allows the analysis to be revised
-without re-running the measurements.
-
+Summary statistics, namely the median, minimum, maximum, and interquartile
+range, are computed offline rather than on the device, which keeps the on-device
+harness minimal and allows the analysis to be revised without re-running the
+measurements.
 Under interrupt masking the per-iteration variation was zero on both boards for
 all measured workloads, so the median, minimum, and maximum coincide.
 
@@ -336,13 +309,7 @@ the input size; the per-iteration variation should be at most a few ticks; the
 smallest input size should record a non-zero time; and the reported clock
 frequency should read 48\,MHz on both boards.
 
-All four checks passed on both boards.
-The per-iteration variation was zero on both boards after the warmup run.
-The measured ratio between the two boards for this memory workload settled at
-approximately 2.8 to~1 at the largest size, which reflects the architectural
-cost of the Cortex-M0 relative to the Cortex-M4F at the same clock.
-This figure serves as a reference point for interpreting the cryptographic
-ratios between the two boards.
+The results of this validation are reported in Section~\ref{sec:harness-val}.
 
 \section{Reproducibility and Known Limitations}
 
@@ -361,8 +328,7 @@ as a measurement of fixed per-call cost rather than of encryption work.
 The harness does not subtract this overhead, and raw ticks are reported as
 measured.
 The AES-GCM measurements use the small GHASH table, as disclosed in
-Section~3.4.1, and therefore represent the memory-frugal end of AES-GCM rather
-than its fastest configuration.
+Section~3.4.1.
 The ART accelerator is left enabled on the L476, which is the realistic
 deployment configuration, and cycle counts are reported so that the comparison
 does not depend on its effect.

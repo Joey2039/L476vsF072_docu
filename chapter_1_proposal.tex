@@ -7,12 +7,9 @@ Today's cars contain upwards of hundreds of Electronic Control Units (ECUs)
 responsible for functions ranging from engine management and brake control to
 infotainment, over-the-air software updates, and vehicle-to-everything
 communication.
-Due to the sheer number of features, these systems are increasingly
-interconnected.
-All connections can be separated into two categories: internal ones, which are
-mostly bus protocols such as CAN, LIN, and Automotive Ethernet, and external
-ones such as V2X and telematics interfaces.
-These circumstances increase the attack surface exposed to adversaries.
+These systems are increasingly interconnected, over internal buses such as CAN,
+LIN, and Automotive Ethernet and external interfaces such as V2X and telematics,
+which increases the attack surface exposed to adversaries.
 A successful intrusion into a safety-relevant ECU carries consequences that
 extend well beyond data loss: it can compromise brake controllers, manipulate
 steering actuators, or falsify sensor data, directly endangering human lives.
@@ -30,15 +27,13 @@ middleware.
 
 \section{Cryptographic Requirements of Modern ECUs}
 
-ECUs span a wide spectrum of computational capability.
-On the high end are domain controllers managing ADAS functions or running an
-automotive-grade operating system; these may be equipped with multi-core
-processors, dedicated cryptographic co-processors, and several megabytes of RAM.
-At the other end are simple body control modules, sensor nodes, and actuator
-controllers built around low-cost 32-bit microcontrollers with RAM measured in
-tens of kilobytes and no hardware cryptographic accelerator.
-On these devices the computational cost of cryptographic operations becomes a
-real concern.
+ECUs span a wide spectrum of computational capability, from high-end domain
+controllers with multi-core processors and dedicated cryptographic co-processors
+down to simple body control modules, sensor nodes, and actuator controllers
+built around low-cost 32-bit microcontrollers with RAM measured in tens of
+kilobytes and no hardware cryptographic accelerator.
+On these constrained devices the computational cost of cryptographic operations
+becomes a real concern.
 
 For such constrained ECUs, the cryptographic primitive must satisfy several
 requirements simultaneously: it must provide authenticated encryption with
@@ -77,6 +72,7 @@ Recognizing the growing need for cryptographic primitives suited to constrained
 devices, NIST initiated a Lightweight Cryptography (LWC) standardization project
 in 2018~\cite{NISTLWCCall}.
 In February 2023, NIST announced \mbox{ASCON} as the winner~\cite{ASCON2023}.
+The resulting standard was published in August 2025 as NIST SP~800-232~\cite{NISTSP800232}.
 ASCON is a family of lightweight cryptographic algorithms based on a sponge
 construction, designed from the ground up for efficient software implementation
 on small processors.

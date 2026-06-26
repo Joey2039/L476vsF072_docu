@@ -7,10 +7,9 @@ security objectives simultaneously: confidentiality (to prevent unauthorized
 reading of the message), integrity (to detect any modification during
 transmission), and authenticity (to verify that the message originates from a
 legitimate sender).
-Traditionally, these properties were achieved by combining a separate cipher
-with a message authentication code (MAC).
-However, the secure composition of two independent primitives is non-trivial:
-the order of operations matters, and incorrect combinations can introduce
+Traditionally these properties were achieved by combining a separate cipher with
+a message authentication code (MAC), but the secure composition of two
+independent primitives is error-prone and incorrect combinations can introduce
 vulnerabilities even when each primitive is individually sound.
 Authenticated Encryption with Associated Data (AEAD) addresses this by combining
 all three objectives into a single, unified primitive.
@@ -24,9 +23,8 @@ The scheme produces a ciphertext~$C$ and an authentication tag~$T$.
 Decryption takes the same key and nonce, as well as the ciphertext, tag, and
 associated data, and returns the recovered plaintext only if the tag verifies
 successfully; otherwise it returns an explicit failure.
-This fail-closed behavior is essential in embedded contexts, since a receiver
-that processes unauthenticated data before verification completes is vulnerable
-to plaintext-dependent side channels and fault injection.
+This fail-closed behavior is essential in embedded contexts, where processing
+unauthenticated data before verification is a security risk.
 
 For the constrained microcontroller setting considered in this work, two AEAD
 properties are of particular practical relevance.
@@ -57,13 +55,11 @@ round-specific subkey).
 The 128-bit key is expanded into eleven round keys before encryption begins,
 a process known as the key schedule.
 
-The security of AES rests on more than two decades of public cryptanalysis; no
-practical attack against the full cipher is known.
-With hardware acceleration (a dedicated AES engine), the cipher executes at
-throughputs measured in gigabits per second.
-On a software-only Cortex-M0 implementation, however, the \texttt{MixColumns}
-step and the S-box lookups impose a considerable cycle cost, because the M0
-lacks the wider data path and lookup acceleration found on higher-end cores.
+The security of AES rests on two decades of public cryptanalysis, with no
+practical attack against the full cipher known.
+On a software-only Cortex-M0 implementation the \texttt{MixColumns} step and the
+S-box lookups impose a considerable cycle cost, because the M0 lacks the wider
+data path and lookup acceleration found on higher-end cores.
 This performance gap on minimal instruction-set architectures is the central
 motivation for evaluating a lightweight alternative.
 
@@ -94,9 +90,8 @@ operations.
 The Cortex-M0 provides only a 32-bit multiply without a carry-less variant, so
 a software GHASH implementation on that core requires a series of XOR and shift
 operations that contribute noticeably to the total cycle count.
-Additionally, GCM requires a unique nonce per encryption; nonce reuse under the
-same key is catastrophic, recovering both the hash key and the plaintext with a
-small number of observed ciphertexts.
+GCM also requires a unique nonce per encryption, since nonce reuse under the
+same key is catastrophic.
 
 \subsection{Software-Only Scope}
 
@@ -122,15 +117,11 @@ $x_0$ through $x_4$.
 Each round applies three layers in sequence.
 
 The first layer, $p_C$ (constant addition), XORs a round-specific constant into
-word~$x_2$, introducing asymmetry between rounds to prevent slide attacks.
+word~$x_2$.
 The second layer, $p_S$ (substitution), applies a 5-bit S-box in parallel to
 all 64 bit-sliced positions across the five state words.
-This S-box provides non-linearity with simple arithmetic and was chosen for the
-efficiency of its bitsliced implementation on processors with native 64-bit or
-32-bit word operations.
 The third layer, $p_L$ (linear diffusion), applies independent linear
-transformations to each of the five state words using rotations and XOR,
-ensuring that differences propagate rapidly across the full state.
+transformations to each of the five state words using rotations and XOR.
 
 The full ASCON permutation uses twelve rounds ($p^{12}$) for initialization and
 finalization.
@@ -165,7 +156,9 @@ For Ascon-AEAD128, the 192-bit capacity yields a claimed security level of
 \subsection{Ascon-AEAD128}
 
 Ascon-AEAD128 is the primary AEAD member of the ASCON family and the algorithm
-selected as the NIST Lightweight Cryptography standard~\cite{ASCON2023}.
+selected as the winner of the NIST Lightweight Cryptography standardization
+process~\cite{ASCON2023}. It is specified as a standard in NIST
+SP~800-232~\cite{NISTSP800232}.
 It accepts a 128-bit key, a 128-bit nonce, associated data of arbitrary length,
 and a plaintext of arbitrary length, and produces a ciphertext of the same
 length as the plaintext together with a 128-bit authentication tag.
@@ -187,11 +180,9 @@ ASCON reference implementation in C~\cite{ASCONSoftware}.
 \subsection{Ascon-Hash256}
 
 Ascon-Hash256 is the hash function member of the ASCON family.
-It produces a 256-bit digest from an input of variable length using the same
-$p^{12}$ permutation as Ascon-AEAD128.
-Message absorption proceeds in 64-bit rate blocks, each followed by $p^{12}$,
-and the digest is squeezed in two 64-bit output blocks after all input has been
-absorbed.
+It produces a 256-bit digest using the same $p^{12}$ permutation as
+Ascon-AEAD128, absorbing the input in 64-bit rate blocks and squeezing the
+digest in two 64-bit output blocks.
 
 
 \subsection{Ascon-80pq and the Post-Quantum Outlook}
@@ -205,123 +196,64 @@ A 128-bit key offers approximately 64-bit post-quantum security under Grover's
 model, while the 160-bit key of Ascon-80pq provides approximately 80-bit
 post-quantum security.
 
-The performance overhead of the 160-bit key variant relative to Ascon-AEAD128
-is limited to initialization, where the additional 32 bits are incorporated into
-the state setup.
-The permutation rounds and data processing phases are identical.
-Ascon-80pq is therefore of interest as a forward-compatible migration path for
-automotive security architectures that must account for long vehicle service
-lifetimes, during which the practical capabilities of quantum computing may
-evolve.
-Ascon-80pq is part of the original ASCON v1.2 competition submission and is not
-included in NIST SP~800-232, which standardizes only Ascon-AEAD128,
-Ascon-Hash256, Ascon-XOF128, and Ascon-CXOF128~\cite{ASCONSpec}.
+Ascon-80pq is part of the original ASCON v1.2 competition
+submission~\cite{ASCONSpec} and is not included in NIST SP~800-232, which
+standardizes only Ascon-AEAD128, Ascon-Hash256, Ascon-XOF128, and
+Ascon-CXOF128~\cite{NISTSP800232}.
 
 \section{Architectural Comparison: Sponge vs.\ Block Cipher + GCM}
 
 The structural differences between AES-128-GCM and Ascon-AEAD128 have concrete
-implications for software performance on constrained microcontrollers, which are
-worth making explicit before the benchmark results are presented.
-
-AES-128-GCM is built from two largely independent components: the AES block
-cipher and the GHASH authenticator.
-Each has its own state, key material, and processing requirements.
-The AES key schedule expands 128 bits into 176 bytes of round keys that must
-either be precomputed and stored in RAM or recomputed for each execution.
-The GHASH state requires an additional 128-bit accumulator and the hash key~$H$.
-On a Cortex-M0 without hardware multiply, GHASH is the performance bottleneck
-for short messages, since its initialization cost (one AES block encryption) is
-spread poorly at small input sizes.
-
-Ascon-AEAD128 holds its entire state in the 320-bit permutation input.
-There is no separate key schedule: the key is absorbed directly into the state
-during initialization.
-The permutation is defined entirely by bitwise rotations and XOR, operations
-that are cheap on any 32-bit or 64-bit processor without specialized hardware.
-The absence of S-box table lookups also eliminates a class of cache-timing
-side channels that must be considered when deploying AES on processors without
-constant-time hardware support.
-
-Both algorithms process data in 128-bit units per core operation: AES encrypts
-one 128-bit block per cipher call, and Ascon-AEAD128 absorbs one 128-bit rate
-block per permutation call.
-The throughput difference between them therefore cannot be attributed to a rate
-disadvantage on either side and must be found in the per-operation cost of the
-underlying primitive.
-Whether Ascon-AEAD128 or AES-128-GCM requires fewer cycles on a given platform
-cannot be determined theoretically; answering it quantitatively is the central
-goal of this benchmark.
+implications for software performance on constrained microcontrollers.
+AES-128-GCM is built from two largely independent components, the AES block
+cipher and the GHASH authenticator, each with its own state, and its key
+schedule expands 128 bits into 176 bytes of round keys.
+Ascon-AEAD128 holds its entire state in the 320-bit permutation input, with no
+separate key schedule, and the permutation is built from bitwise rotations and
+XOR with no table lookups.
+Both algorithms process data in 128-bit units per core operation, so the
+throughput difference between them lies in the per-operation cost of the
+underlying primitive, which the benchmark measures.
 
 \section{Target Platforms}
 
 \subsection{ARM Cortex-M0 --- NUCLEO-F072RB}
 
-The NUCLEO-F072RB board is built around the STM32F072RB microcontroller, which
-integrates an ARM Cortex-M0 core clocked at 48\,MHz.
-The Cortex-M0 is the smallest and most constrained member of the ARM Cortex-M
-family.
-It implements the ARMv6-M instruction set architecture, a minimal 16/32-bit
-Thumb instruction set without the DSP extensions, floating-point unit, or
-hardware divide instruction present in larger M-class cores.
-The core has no instruction or data caches.
-
-Relevant characteristics for this benchmark include the absence of a hardware
-multiply-accumulate that would accelerate GHASH, a two-cycle latency for the
-available $32\times32$-bit multiply (which produces a 32-bit result), and the
-lack of a Data Watchpoint and Trace (DWT) unit with a cycle counter.
-Because the DWT cycle counter is not present on the M0, cycle-accurate
-measurement on this board uses TIM2, configured as a 32-bit free-running counter
-driven by the system clock.
-
-The F072RB is representative of the lowest tier of 32-bit microcontrollers
-found in automotive body and sensor applications, where unit cost and power
-consumption are the dominant design constraints.
+The NUCLEO-F072RB board is built around the STM32F072RB, an ARM Cortex-M0 core
+clocked at 48\,MHz.
+It implements the ARMv6-M instruction set, with no DSP extensions, no
+floating-point unit, and no instruction or data caches, and it lacks a wide
+multiply-accumulate that would accelerate GHASH.
+Because the M0 has no Data Watchpoint and Trace (DWT) cycle counter,
+cycle-accurate measurement on this board uses TIM2, configured as a 32-bit
+free-running counter driven by the system clock.
 
 \subsection{ARM Cortex-M4F --- NUCLEO-L476RG}
 
-The NUCLEO-L476RG board is built around the STM32L476RG microcontroller, which
-integrates an ARM Cortex-M4F core clocked at up to 80\,MHz.
-The Cortex-M4F implements the ARMv7E-M instruction set architecture, which
-extends ARMv6-M with DSP-oriented instructions including a single-cycle
-$32\times32$-bit multiply with 64-bit accumulate (\texttt{MLA},
-\texttt{SMLAL}), single-instruction saturating arithmetic, and a
-single-precision floating-point unit (FPU).
-The core also includes an Adaptive Real-Time (ART) memory accelerator, which
-implements an instruction prefetch buffer and a branch cache to reduce Flash
-access latency at high operating frequencies.
-
-For timing, the Cortex-M4F provides a DWT unit including the
-\texttt{DWT->CYCCNT} cycle counter, a 32-bit register incremented on every
-processor clock, readable with a single memory-mapped register access.
-
-The L476RG is representative of a mid-range automotive microcontroller, suitable
-for body control modules and sensor fusion nodes with moderate processing
-requirements.
-Together with the F072RB, the two boards span a performance range relevant to
-the lower half of the automotive ECU spectrum.
+The NUCLEO-L476RG board is built around the STM32L476RG, an ARM Cortex-M4F core
+clocked at up to 80\,MHz.
+It implements the ARMv7E-M instruction set, which adds a single-cycle
+$32\times32$-bit multiply producing a 64-bit result (\texttt{UMULL} and
+\texttt{UMLAL}, the variants relevant to GHASH), a single-precision
+floating-point unit (FPU), and an Adaptive Real-Time (ART) memory accelerator
+that reduces Flash access latency at high operating frequencies.
+For timing, the Cortex-M4F provides a DWT unit with the \texttt{DWT->CYCCNT}
+cycle counter, readable with a single memory-mapped register access.
 
 \section{Related Work}
 
 Performance comparisons between ASCON and AES-GCM on embedded hardware have
-appeared in several contexts since ASCON's selection as the NIST LWC standard.
-Benchmarks conducted on AVR 8-bit and MSP430 16-bit platforms during the NIST
-LWC competition evaluation process demonstrated ASCON's advantage on
-ultra-constrained targets, but these results are not directly applicable to
-32-bit ARM Cortex-M deployments that represent the current generation of
-automotive microcontrollers.
-
-Work targeting ARM Cortex-M platforms specifically has been published both by
-the ASCON team and by independent researchers.
-The ASCON team provides cycle counts for their reference and optimized
-implementations on several Cortex-M targets~\cite{ASCONSoftware}.
-However, published figures often report single-point measurements at a fixed
-message length rather than throughput curves across a logarithmic range of input
-sizes, which are needed to characterize behavior for the short messages typical
-in automotive CAN frames and sensor update packets.
-
+appeared since ASCON's selection as the NIST LWC standard.
+Benchmarks on AVR 8-bit and MSP430 16-bit platforms demonstrated ASCON's
+advantage on ultra-constrained targets, but these results are not directly
+transferable to the 32-bit ARM Cortex-M deployments that represent the current
+generation of automotive microcontrollers.
+Figures for ARM Cortex-M targets have been published by the ASCON team and by
+independent researchers~\cite{ASCONSoftware}, but they often report a single
+message length rather than a throughput curve across a range of input sizes,
+which is needed to characterize behavior for the short messages typical in
+automotive CAN frames and sensor packets.
 To the authors' knowledge, no published work directly compares AES-128-GCM and
-Ascon-AEAD128 across both a Cortex-M0 and a Cortex-M4F target with a
-controlled, software-only methodology that includes compiler optimization level
-as an explicit variable.
-This work aims to fill that gap by providing reproducible benchmark data for
-both platforms under a unified measurement framework.
+Ascon-AEAD128 across both a Cortex-M0 and a Cortex-M4F with a controlled,
+software-only methodology that includes the compiler optimization level as an
+explicit variable.

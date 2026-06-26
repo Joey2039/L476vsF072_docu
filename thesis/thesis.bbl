@@ -7,7 +7,8 @@
 \providecommand{\BIBentrySTDinterwordspacing}{\spaceskip=0pt\relax}
 \providecommand{\BIBentryALTinterwordstretchfactor}{4}
 \providecommand{\BIBentryALTinterwordspacing}{\spaceskip=\fontdimen2\font plus
-\BIBentryALTinterwordstretchfactor\fontdimen3\font minus \fontdimen4\font\relax}
+\BIBentryALTinterwordstretchfactor\fontdimen3\font minus
+  \fontdimen4\font\relax}
 \providecommand{\BIBforeignlanguage}[2]{{%
 \expandafter\ifx\csname l@#1\endcsname\relax
 \typeout{** WARNING: IEEEtran.bst: No hyphenation pattern has been}%
@@ -21,24 +22,46 @@
 \BIBdecl
 
 \bibitem{FIPS197}
-{National Institute of Standards and Technology}, ``{Advanced Encryption Standard (AES)},'' National Institute of Standards and Technology, Federal Information Processing Standard 197, 2001.
+{National Institute of Standards and Technology}, ``{Advanced Encryption
+  Standard (AES)},'' National Institute of Standards and Technology, Federal
+  Information Processing Standard 197, 2001.
 
 \bibitem{NISTLWCCall}
-------, ``{Submission Requirements and Evaluation Criteria for the Lightweight Cryptography Standardization Process},'' National Institute of Standards and Technology, Tech. Rep., 2018, available at \url{https://csrc.nist.gov/projects/lightweight-cryptography}.
+------, ``{Submission Requirements and Evaluation Criteria for the Lightweight
+  Cryptography Standardization Process},'' National Institute of Standards and
+  Technology, Tech. Rep., 2018, available at
+  \url{https://csrc.nist.gov/projects/lightweight-cryptography}.
 
 \bibitem{ASCON2023}
-------, ``{NIST Selects `Ascon' for Lightweight Cryptography Standardization},'' NIST Announcement, February 2023, 2023, \url{https://www.nist.gov/news-events/news/2023/02/nist-selects-ascon-lightweight-cryptography-standardization}.
+------, ``{NIST Selects `Ascon' for Lightweight Cryptography
+  Standardization},'' NIST Announcement, February 2023, 2023,
+  \url{https://www.nist.gov/news-events/news/2023/02/nist-selects-ascon-lightweight-cryptography-standardization}.
+
+\bibitem{NISTSP800232}
+M.~S{\"o}nmez~Turan, K.~A. McKay, D.~Chang, J.~Kang, and J.~Kelsey,
+  ``{Ascon-Based Lightweight Cryptography Standards for Constrained Devices:
+  Authenticated Encryption, Hash, and Extendable Output Functions},'' National
+  Institute of Standards and Technology, NIST Special Publication 800-232, Aug.
+  2025.
 
 \bibitem{NISTSP80038D}
-M.~J. Dworkin, ``{Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC},'' National Institute of Standards and Technology, NIST Special Publication 800-38D, 2007.
+M.~J. Dworkin, ``{Recommendation for Block Cipher Modes of Operation:
+  Galois/Counter Mode (GCM) and GMAC},'' National Institute of Standards and
+  Technology, NIST Special Publication 800-38D, 2007.
 
 \bibitem{ASCONSoftware}
-C.~Dobraunig, M.~Eichlseder, F.~Mendel, and M.~Schl{\"a}ffer, ``{ASCON} reference software ({ascon-c}),'' GitHub, 2023, \url{https://github.com/ascon/ascon-c}, commit \texttt{446347f21b209f3921c65ece70027c366cbe1693}.
+C.~Dobraunig, M.~Eichlseder, F.~Mendel, and M.~Schl{\"a}ffer, ``{ASCON}
+  reference software ({ascon-c}),'' GitHub, 2023,
+  \url{https://github.com/ascon/ascon-c}, commit
+  \texttt{446347f21b209f3921c65ece70027c366cbe1693}.
 
 \bibitem{ASCONSpec}
-------, ``{ASCON} v1.2,'' Submission to the {NIST} Lightweight Cryptography Standardization Project, 2021, \url{https://ascon.iaik.tugraz.at/}.
+------, ``{ASCON} v1.2,'' Submission to the {NIST} Lightweight Cryptography
+  Standardization Project, 2021, \url{https://ascon.iaik.tugraz.at/}.
 
 \bibitem{mbedTLS}
-{Mbed TLS Contributors}, ``{Mbed TLS},'' GitHub, 2024, \url{https://github.com/Mbed-TLS/mbedtls}, commit \texttt{107ea89daaefb9867ea9121002fbbdf926780e98}.
+{Mbed TLS Contributors}, ``{Mbed TLS},'' GitHub, 2024,
+  \url{https://github.com/Mbed-TLS/mbedtls}, commit
+  \texttt{107ea89daaefb9867ea9121002fbbdf926780e98}.
 
 \end{thebibliography}

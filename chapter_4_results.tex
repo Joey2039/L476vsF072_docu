@@ -49,7 +49,7 @@ range and is wider on the Cortex-M0 board than on the Cortex-M4F board.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\linewidth]{runtime_vs_size_O2}
+  \includegraphics[width=0.84\textwidth]{runtime_vs_size_O2}
   \caption{Median execution time vs.\ message size at \texttt{-O2} on both
            boards (logarithmic axes). Ascon-AEAD128 is consistently faster than
            AES-128-GCM at every size.}
@@ -58,41 +58,19 @@ range and is wider on the Cortex-M0 board than on the Cortex-M4F board.
 
 \subsection{Effect of Optimization Level}
 
-Figure~\ref{fig:optsweep} shows median execution time at a fixed message size of
-1000 bytes across the five optimization levels, with one panel per board and a
-logarithmic time axis.
-Table~\ref{tbl:timing-1000} gives the underlying values.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth]{opt_sweep_1000B}
-  \caption{Median execution time at 1000\,bytes across optimization levels on
-           both boards (logarithmic time axis).}
-  \label{fig:optsweep}
-\end{figure}
+Table~\ref{tbl:timing-1000} gives the median execution time at 1000 bytes
+across the five optimization levels.
 
 The dominant effect is the step from \texttt{-O0} to \texttt{-O1}.
-On the Cortex-M0 the Ascon-AEAD128 time at 1000 bytes falls from 1{,}387{,}063
-cycles at \texttt{-O0} to 170{,}741 cycles at \texttt{-O1}, a factor of about
-eight.
-The AES-128-GCM time falls from 2{,}661{,}457 to 792{,}911 cycles over the same
-step, a factor of about three.
-On the Cortex-M4F the same step takes Ascon-AEAD128 from 726{,}789 to 104{,}422
-cycles and AES-128-GCM from 845{,}537 to 242{,}980 cycles.
-
-Between \texttt{-O1}, \texttt{-O2}, and \texttt{-O3} the changes are smaller
-and not uniform.
-On the Cortex-M4F, AES-128-GCM is essentially unchanged from \texttt{-O2} to
-\texttt{-O3} (193{,}311 and 193{,}283 cycles), while Ascon-AEAD128 improves
-from 98{,}262 to 70{,}194 cycles.
-On the Cortex-M0, AES-128-GCM improves notably at \texttt{-O3}, from 770{,}536
-to 485{,}227 cycles, while Ascon-AEAD128 improves modestly, from 168{,}921 to
-145{,}888 cycles.
-
+It improves both algorithms but unevenly: on the Cortex-M0 it reduces the
+Ascon-AEAD128 time at 1000 bytes by a factor of about eight and the AES-128-GCM
+time by a factor of about three.
+Between \texttt{-O1}, \texttt{-O2}, and \texttt{-O3} the changes are smaller and
+not uniform across the two boards.
+On the Cortex-M4F, AES-128-GCM gains nothing from \texttt{-O3} over \texttt{-O2}
+while Ascon-AEAD128 continues to improve; on the Cortex-M0 the pattern is
+reversed.
 At \texttt{-Os} both algorithms are slower than at \texttt{-O2} on both boards.
-On the Cortex-M0 the Ascon-AEAD128 time at \texttt{-Os} is 268{,}899 cycles,
-slower than its \texttt{-O1} time.
-On the Cortex-M4F the corresponding \texttt{-Os} time is 139{,}993 cycles.
 
 \begin{table}[htbp]
   \centering
@@ -118,12 +96,12 @@ On the Cortex-M4F the corresponding \texttt{-Os} time is 139{,}993 cycles.
   \end{tabular}
 \end{table}
 
-At \texttt{-O0} the two algorithms are close, especially on the Cortex-M4F
-where the ratio is 1.16.
+At \texttt{-O0} the two algorithms are close, with a ratio of 1.16 on the
+Cortex-M4F.
 Once optimization is enabled the ratio is larger, and at every optimized level
-the ratio is greater on the Cortex-M0 than on the Cortex-M4F.
-The largest ratio in favor of Ascon-AEAD128 occurs at \texttt{-O1} and
-\texttt{-O2} on the Cortex-M0, at approximately 4.6.
+it is greater on the Cortex-M0 than on the Cortex-M4F.
+The largest ratio in favor of Ascon-AEAD128 is about 4.6, at \texttt{-O1} and
+\texttt{-O2} on the Cortex-M0.
 
 \section{Throughput}
 \label{sec:throughput}
@@ -137,7 +115,7 @@ the per-byte encryption rate.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\linewidth]{cycles_per_byte_O2}
+  \includegraphics[width=0.84\textwidth]{cycles_per_byte_O2}
   \caption{Median cycles per byte vs.\ message size at \texttt{-O2} on both
            boards (logarithmic axes). The asymptotic value at large sizes
            reflects the steady-state per-byte encryption rate.}
@@ -165,7 +143,7 @@ level.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.75\linewidth]{footprint_flash_Os}
+  \includegraphics[width=0.58\textwidth]{footprint_flash_Os}
   \caption{Marginal Flash cost at \texttt{-Os} for each algorithm and board.
            Ascon-AEAD128 requires approximately 3.8$\times$ less Flash than
            AES-128-GCM at this level.}
@@ -202,29 +180,17 @@ on both boards.
   \end{tabular}
 \end{table}
 
-The Ascon-AEAD128 marginal Flash cost varies strongly with optimization level.
-Figure~\ref{fig:footprint-levels} shows this for each board.
+The Ascon-AEAD128 marginal Flash cost varies strongly with optimization level,
+as Table~\ref{tbl:footprint} shows.
 At \texttt{-Os} it is the smaller of the two algorithms by a wide margin.
 At \texttt{-O1}, \texttt{-O2}, and \texttt{-O3} it is larger than the
 AES-128-GCM cost, reaching a maximum at \texttt{-O3} of 43{,}024 bytes on the
 Cortex-M0 and 34{,}560 bytes on the Cortex-M4F.
 The AES-128-GCM marginal Flash cost is comparatively stable across levels,
 between roughly 16{,}000 and 26{,}000 bytes.
-The shape of the Ascon-AEAD128 curve is the same on both boards, rising from
+The shape of the Ascon-AEAD128 cost is the same on both boards, rising from
 \texttt{-O0} through a peak at \texttt{-O3} and then falling sharply at
 \texttt{-Os}.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.49\linewidth]{footprint_across_levels_F072}%
-  \hfill%
-  \includegraphics[width=0.49\linewidth]{footprint_across_levels_L476}
-  \caption{Marginal Flash cost across all optimization levels. Left:
-           Cortex-M0 (F072). Right: Cortex-M4F (L476). The Ascon-AEAD128
-           cost varies strongly with optimization level due to permutation
-           unrolling, while AES-128-GCM remains comparatively stable.}
-  \label{fig:footprint-levels}
-\end{figure}
 
 \section{Summary of Results}
 
