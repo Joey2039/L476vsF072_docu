@@ -1,0 +1,368 @@
+\chapter{Methodology}
+
+\section{Overview and Experimental Design}
+
+This chapter describes how the benchmark was constructed and how every reported
+number was produced.
+The goal is a fair and reproducible comparison of Ascon-AEAD128 and AES-128-GCM
+under matched conditions on two constrained microcontrollers.
+Fairness here has a precise meaning: both algorithms run as software-only
+implementations, both are measured through an identical timing harness, both are
+compiled with the same toolchain and the same set of optimization levels, and the
+one-time setup cost is excluded from the timed region for both in the same way.
+
+The experimental design varies four factors: the algorithm (Ascon-AEAD128 or
+AES-128-GCM), the hardware platform (Cortex-M0 or Cortex-M4F), the input
+message size (swept across several orders of magnitude), and the compiler
+optimization level (swept from no optimization through size optimization).
+Each combination is measured many times and reduced to summary statistics
+offline.
+Code size is measured separately, as a static property of the compiled binaries
+rather than a runtime measurement.
+
+\section{Target Platforms}
+
+Two STMicroelectronics Nucleo-64 development boards represent the low and
+middle of the constrained range.
+Their relevant properties are summarized in Table~\ref{tbl:platforms}.
+Both boards expose an on-board ST-LINK debugger with a USB virtual COM port
+routed to USART2, which carries the measurement output.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Target platform properties}
+  \label{tbl:platforms}
+  \begin{tabular}{lll}
+    \toprule
+    Property              & NUCLEO-F072RB     & NUCLEO-L476RG    \\
+    \midrule
+    Microcontroller       & STM32F072RBT6     & STM32L476RGT6    \\
+    Core                  & Cortex-M0         & Cortex-M4F       \\
+    Maximum clock         & 48\,MHz           & 80\,MHz          \\
+    Flash                 & 128\,KB           & 1\,MB            \\
+    SRAM                  & 16\,KB            & 128\,KB          \\
+    Hardware AES          & None              & None             \\
+    Cycle counter (DWT)   & Absent            & Present          \\
+    Instruction prefetch  & None              & ART accelerator  \\
+    Floating-point unit   & None              & Single precision \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{NUCLEO-F072RB (Cortex-M0)}
+
+The F072 carries a Cortex-M0 core with no hardware multiplier for wide
+operands, no instruction cache, no branch predictor, and no floating-point
+unit.
+It represents the lower end of the device range, where every cycle and every
+kilobyte is scarce.
+Its 16\,KB of SRAM is the binding constraint on this study, and it limits the
+largest message size that can be benchmarked on this board.
+
+\subsection{NUCLEO-L476RG (Cortex-M4F)}
+
+The L476 carries a Cortex-M4F core with a single-cycle hardware multiplier, a
+single-precision floating-point unit, and the ST ART accelerator, which
+prefetches and caches instructions from Flash.
+It represents the middle of the range.
+The L476 has substantially more memory than the F072, so memory is not a
+constraint on this board, but it is included to expose how the relative
+performance of the two algorithms depends on the processor architecture.
+
+The specific part on the NUCLEO-L476RG does not contain a hardware AES block;
+only the L486 and related parts in the same family include one.
+This absence is useful for the study, because it means there is no hardware
+cryptographic path that could be engaged accidentally, so the software
+comparison is consistent on both boards.
+
+\subsection{Clocking and the Matched-Frequency Decision}
+
+Both boards run at 48\,MHz for the timing comparison.
+The L476 is capable of 80\,MHz, so it is intentionally underclocked to the
+F072 ceiling.
+This choice removes clock frequency as a variable: any difference in measured
+time between the two boards at the same clock then reflects the processor
+architecture alone, not a difference in operating frequency.
+
+The measurements are reported primarily as cycle counts rather than wall-clock
+time, since the timer increments once per processor clock (see
+Section~\ref{sec:timing-source}), so one timer tick equals one clock cycle and
+the cycle count is independent of the operating frequency.
+
+\section{Toolchain and Build System}
+
+All firmware was built with a single toolchain to keep the comparison
+consistent.
+The compiler is \texttt{arm-none-eabi-gcc} version 14.3.1, supplied with the
+STM32CubeCLT bundle.
+The build is driven by CMake with the Ninja generator, both bundled with
+CubeCLT.
+Project skeletons, including peripheral initialization and the linker script,
+were generated with STM32CubeMX configured for CMake output.
+The host operating system was Windows.
+
+The base compiler flags follow the CubeMX template.
+They include \texttt{-ffunction-sections}, \texttt{-fdata-sections}, and linker
+garbage collection (\texttt{-Wl,--gc-sections}), the size-oriented newlib-nano
+C library (\texttt{--specs=nano.specs}), and the architecture flags appropriate
+to each core.
+On the L476 these include the hardware floating-point ABI, although
+floating-point arithmetic is not used by either algorithm.
+
+The optimization level is the one build variable that changes across the
+measurement matrix.
+It is controlled through a single CMake cache variable set per build preset.
+Each preset reconfigures the build at one optimization level, from \texttt{-O0}
+through \texttt{-Os}, so that the same source produces a family of binaries
+that differ only in optimization.
+
+\section{Cryptographic Implementations}
+
+Both implementations are taken from existing open-source projects rather than
+written for this study.
+This keeps the comparison representative of what a developer would actually
+deploy, and it avoids the risk of an unrepresentative hand-written
+implementation favoring one side.
+
+\subsection{AES-128-GCM (mbedTLS)}
+
+AES-128-GCM is provided by mbedTLS version 3.6.x~\cite{mbedTLS}.
+mbedTLS was selected because it is a widely deployed, well-maintained library
+with a complete and verified AES-GCM implementation, which lends the comparison
+credibility.
+The library was reduced to a minimal configuration containing only the modules
+required for AES-128-GCM.
+
+Three configuration choices affect the measurements and are disclosed here,
+because the reported numbers are only interpretable alongside them.
+
+First, the small four-bit GHASH multiplication table is used.
+The larger eight-bit table is faster per byte but enlarges the GCM context by
+roughly 3.8\,KB of RAM.
+The small table was chosen because it represents a genuinely lightweight
+configuration of AES-GCM, matching the constrained-device framing of this work.
+As a consequence, the reported AES-GCM throughput represents the memory-frugal
+end of what mbedTLS can achieve rather than its speed ceiling.
+This point is revisited in the discussion.
+
+Second, the AES lookup tables are placed in Flash rather than generated in RAM
+at initialization.
+This shifts roughly 8\,KB from RAM to Flash, which is the realistic trade-off
+on a part with only 16\,KB of SRAM.
+It affects the code-size results but has no meaningful effect on runtime.
+
+Third, only the 128-bit key length is compiled.
+The 192-bit and 256-bit key schedules are removed.
+Because only AES-128 is benchmarked, this has no effect on runtime and only a
+small effect on Flash size.
+
+\subsection{Ascon-AEAD128 (Reference Implementation)}
+
+Ascon-AEAD128 is provided by the official ASCON reference implementation in
+C~\cite{ASCONSoftware}.
+The reference variant was chosen over the optimized variants for portability and
+because it corresponds directly to the standardized specification.
+The implementation uses a 16-byte key, a 16-byte nonce, and produces a 16-byte
+authentication tag, with a rate of 16 bytes.
+
+The choice of the reference variant has a visible effect on code size at high
+optimization levels.
+This is reported and discussed rather than hidden, because it reflects what a
+developer integrating the standard reference code would observe.
+
+\subsection{Uniform Wrapper Interface}
+
+Each implementation is reached through a thin wrapper with a matching
+signature, so that the benchmark harness calls both algorithms the same way.
+The AES wrapper separates key setup from encryption, so that the one-time key
+schedule can be hoisted out of the timed region.
+The ASCON single-pass AEAD interface has no separable key schedule, so its
+encryption call is timed in full.
+Neither wrapper performs additional copying inside the timed path beyond what
+the underlying library requires.
+
+\section{Correctness Verification}
+
+No timing measurement was trusted until the implementation producing it was
+shown to be correct.
+Each algorithm was verified against published test vectors before any benchmark
+was run.
+
+AES-128-GCM was checked against a NIST Known Answer Test vector, confirming
+both the ciphertext and the authentication tag for a known key, nonce, and
+input.
+It was additionally checked with a round-trip test, where decryption of the
+produced ciphertext returns the original plaintext, and with a forgery-rejection
+test, where a modified tag is correctly rejected.
+
+Ascon-AEAD128 was checked against a vector from the Lightweight Cryptography
+Known Answer Test set, confirming the combined ciphertext and tag for a known
+key and nonce.
+It was likewise checked with a round-trip test and a forgery-rejection test.
+
+Both verification routines run on the target hardware at startup, before the
+benchmark begins, and print a pass result over the serial link.
+A failure halts interpretation of any subsequent timing for that build.
+
+\section{Measurement Methodology}
+
+\subsection{Timing Source}
+\label{sec:timing-source}
+
+Both boards use the TIM2 timer as the timing source.
+TIM2 is a 32-bit timer on both families, configured identically on each board as
+a free-running up-counter driven by the internal clock with the prescaler set to
+zero.
+With a zero prescaler the counter increments once per processor clock cycle, so
+one tick equals one cycle.
+At 48\,MHz the 32-bit counter wraps approximately every 89 seconds, which is
+far longer than any single measurement.
+All elapsed-time computations use unsigned 32-bit subtraction, which handles a
+single wrap during a measurement correctly without special-case logic.
+
+The Cortex-M0 on the F072 does not provide the Data Watchpoint and Trace cycle
+counter available on the Cortex-M4F.
+Using TIM2 on both boards therefore gives a comparison between identically
+configured peripherals rather than between two architecturally different timing
+mechanisms.
+
+\subsection{Interrupt Masking and Warmup}
+
+The benchmark macro disables all maskable interrupts for the duration of the
+measured region and re-enables them afterward.
+This prevents the periodic system tick interrupt and any peripheral interrupts
+from polluting short measurements.
+The effect was confirmed during validation, where masking reduced the
+per-iteration variation from roughly 28 ticks to zero on a reference workload.
+
+Each measurement runs the workload once before the timed iterations begin, and
+the result of this first run is discarded.
+This warmup primes the L476 ART accelerator and any related
+microarchitectural state.
+On the L476 the first run differs from the steady state by roughly 1.5\% at
+small sizes.
+On the F072 there is no measurable warmup effect, because the Cortex-M0 has no
+instruction cache or branch predictor that could be cold.
+
+\subsection{Defeating Dead-Code Elimination}
+
+At higher optimization levels the compiler can remove a computation whose result
+is never used.
+To prevent this, each workload writes one byte of its output into a
+\texttt{volatile} variable.
+The \texttt{volatile} qualifier forces the compiler to produce the output, because
+it cannot prove the write is unnecessary.
+This protection is verified indirectly by checking that the smallest input size
+still records a non-zero time at every optimization level.
+
+\subsection{Scope of the Timed Region}
+
+The timed region contains only the authenticated-encryption operation.
+For AES-128-GCM the key schedule is performed once before the measurements
+begin and is not included.
+For Ascon-AEAD128 the single-pass interface performs key setup as part of the
+encryption call and cannot separate it, so the full call is timed.
+This treats the one-time setup symmetrically: the repeated per-call cost is
+measured for both, and the fixed setup that a real deployment would perform once
+is excluded from both where the interface allows.
+
+All measurements encrypt plaintext with no associated data.
+
+\subsection{Output Format and Offline Statistics}
+
+Each measured iteration is streamed over the serial link as a row of
+comma-separated values containing the algorithm, the board, the clock frequency,
+the input size, the iteration index, and the measured ticks.
+Summary statistics --- namely the median, minimum, maximum, and interquartile
+range --- are computed offline rather than on the device.
+This keeps the on-device harness minimal and allows the analysis to be revised
+without re-running the measurements.
+
+Under interrupt masking the per-iteration variation was zero on both boards for
+all measured workloads, so the median, minimum, and maximum coincide.
+
+\section{Benchmark Parameters}
+
+\subsection{Input Sizes}
+
+Message sizes are swept on a logarithmic scale.
+On the L476 the sizes are 1, 10, 100, 1000, and 10\,000 bytes.
+On the F072 the largest size is omitted, because the buffers required for a
+10\,000-byte message do not fit within 16\,KB of SRAM, so the F072 sizes are
+1, 10, 100, and 1000 bytes.
+The logarithmic spread separates the fixed per-call cost, which dominates at
+small sizes, from the per-byte cost, which dominates at large sizes.
+
+Each size is measured for 100 iterations after the discarded warmup run.
+
+\subsection{Optimization-Level Matrix}
+
+Each algorithm on each board is compiled at five optimization levels:
+\texttt{-O0}, \texttt{-O1}, \texttt{-O2}, \texttt{-O3}, and \texttt{-Os}.
+This sweep shows how much of the measured performance depends on optimization
+rather than on the algorithm itself, and it identifies the level at which each
+algorithm performs best, which differs by algorithm and by architecture.
+Reporting only a single optimization level would hide both effects.
+
+\section{Footprint Measurement}
+
+Code size is measured as a static property of the compiled binaries using
+\texttt{arm-none-eabi-size}, which reports the size of the program text, the
+initialized data, and the zero-initialized data sections.
+Flash usage is taken as the sum of the text and initialized-data sections.
+
+Because a single binary links both algorithms together with the common platform
+and harness code, the size of one combined binary cannot attribute code to one
+algorithm or the other.
+To obtain a per-algorithm figure, three build variants are produced from the
+same source through a compile-time selection:
+a baseline variant (platform and harness code, no cryptographic implementation),
+an AES variant (adds AES-128-GCM), and an ASCON variant (adds Ascon-AEAD128).
+The marginal cost of each algorithm is the difference between its variant and
+the baseline.
+
+Footprint is reported primarily at the size-optimization level, because that
+is the configuration a memory-constrained deployment would use.
+Footprint at the other optimization levels is also recorded, as the code size of
+the ASCON reference implementation varies considerably with optimization.
+
+\section{Harness Validation}
+
+Before any cryptographic code was measured, the harness was validated with a
+\texttt{memcpy} workload of known behavior, measured at sizes 1, 10, 100, and
+1000 bytes for 100 iterations each.
+Four checks were defined: the measured time should grow roughly in proportion to
+the input size; the per-iteration variation should be at most a few ticks; the
+smallest input size should record a non-zero time; and the reported clock
+frequency should read 48\,MHz on both boards.
+
+All four checks passed on both boards.
+The per-iteration variation was zero on both boards after the warmup run.
+The measured ratio between the two boards for this memory workload settled at
+approximately 2.8 to~1 at the largest size, which reflects the architectural
+cost of the Cortex-M0 relative to the Cortex-M4F at the same clock.
+This figure serves as a reference point for interpreting the cryptographic
+ratios between the two boards.
+
+\section{Reproducibility and Known Limitations}
+
+The exact mbedTLS configuration is committed to the repository, and the commit
+hashes of mbedTLS and the ASCON reference implementation are
+recorded~\cite{mbedTLS,ASCONSoftware}.
+The compiler, CMake, Ninja, and CubeCLT versions are recorded, as are the
+board hardware revisions and the ST-LINK firmware versions.
+
+Several limitations are disclosed for honesty of interpretation.
+The reported times include a small fixed overhead from the timer read pair, the
+loop branch, and the \texttt{volatile} store.
+At the largest size this overhead is on the order of one percent of the total;
+at the smallest size it dominates, so the smallest-size figures should be read
+as a measurement of fixed per-call cost rather than of encryption work.
+The harness does not subtract this overhead, and raw ticks are reported as
+measured.
+The AES-GCM measurements use the small GHASH table, as disclosed in
+Section~3.4.1, and therefore represent the memory-frugal end of AES-GCM rather
+than its fastest configuration.
+The ART accelerator is left enabled on the L476, which is the realistic
+deployment configuration, and cycle counts are reported so that the comparison
+does not depend on its effect.

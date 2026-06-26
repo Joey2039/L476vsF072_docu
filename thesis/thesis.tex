@@ -1,32 +1,61 @@
-\documentclass[a4paper]{scrbook}
+\documentclass[a4paper,oneside,openany]{scrbook}
 
 \usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{booktabs}
 \usepackage{url}
 \usepackage{relsize}
 \usepackage{hyperref}
 \usepackage{libertine}
+\usepackage[scaled=0.85]{beramono}
 \usepackage{ifthen}
 \usepackage{fancyhdr}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{listings}
+\usepackage[htt]{hyphenat}
+
+\graphicspath{{../figures/}{./}}
+
+\setlength{\emergencystretch}{3em}
+
+\lstdefinestyle{codestyle}{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  breakatwhitespace=true,
+  showstringspaces=false,
+  frame=single,
+  rulecolor=\color{black!25},
+  backgroundcolor=\color{black!4},
+  captionpos=b,
+  numbers=none,
+}
+\lstset{style=codestyle}
+
+% pandoc-generated chapters use \tightlist inside list environments
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Replace these values
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\newcommand{\thesistitleDE}{Deutscher Titel\\Maximal zwei Zeilen}
-\newcommand{\thesistitleEN}{English Title\\Two lines at most}
-\newcommand{\student}{Firstname Lastname}
-\newcommand{\matrnr}{123456}
-\newcommand{\stammnr}{234567} % Unset this variable if you only have a (single) matriculation number
-\newcommand{\submissiondate}{XX.\ Monat 20XX}
-\newcommand{\supervisor}{Prof.~Dr.~Rehrnert}
-\newcommand{\secsupervisor}{Prof.~Dr.~Zweitprüfer} % Unset this variable if no second supervisor is required
+\newcommand{\thesistitleDE}{Leichtgewichtige Kryptographie auf ressourcenbeschränkten ARM-Mikrocontrollern:\\Benchmark-Vergleich von Ascon-AEAD128 und AES-128-GCM}
+\newcommand{\thesistitleEN}{Lightweight Cryptography on Constrained ARM Microcontrollers:\\A Benchmark Comparison of Ascon-AEAD128 and AES-128-GCM}
+\newcommand{\student}{Johannes Zipper}
+\newcommand{\matrnr}{22411902}
+\newcommand{\stammnr}{} % Unset this variable if you only have a (single) matriculation number
+\newcommand{\submissiondate}{26.\ Juni 2026}
+\newcommand{\supervisor}{Prof.~Dr.~Martin Schramm}
+\newcommand{\secsupervisor}{} % Unset this variable if no second supervisor is required
 \newcommand{\faculty}{Angewandte Informatik}
 
 % Select your course of studies here
-%\newcommand{\studies}{Bachelor Cybersecurity}
+\newcommand{\studies}{Bachelor Cybersecurity}
 %\newcommand{\studies}{Bachelor Künstliche Intelligenz}
-\newcommand{\studies}{Bachelor Angewandte Informatik}
+%\newcommand{\studies}{Bachelor Angewandte Informatik}
 %\newcommand{\studies}{Master Angewandte Informatik}
 %\newcommand{\studies}{Bachelor Elektro- und Informationstechnik}
 %\newcommand{\studies}{Master Elektro- und Informationstechnik}
@@ -35,9 +64,10 @@
 %\newcommand{\studies}{Master of Applied Research}
 
 % Select the targeted degree here
-\newcommand{\degree}{Bachelor of Engineering (B.Eng.)}
+%\newcommand{\degree}{Bachelor of Engineering (B.Eng.)}
 %\newcommand{\degree}{Master of Engineering (M.Eng.)}
 %\newcommand{\degree}{Master of Science (M.Sc.)}
+\newcommand{\degree}{Bachelor of Science (B.Sc.)}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \renewcommand*{\UrlFont}{\ttfamily\smaller\relax}
@@ -49,14 +79,29 @@
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-The abstract goes here
+This thesis presents a measurement-based comparison of Ascon-AEAD128 and AES-128-GCM on two constrained ARM Cortex-M microcontrollers representative of the automotive embedded-systems spectrum: the NUCLEO-F072RB (Cortex-M0, 48\,MHz, 16\,KB SRAM) and the NUCLEO-L476RG (Cortex-M4F, clocked at 48\,MHz to match the F072, 128\,KB SRAM).
+Both algorithms are evaluated as software-only implementations using the official ASCON reference implementation and mbedTLS, respectively, across message sizes from 1 to 10\,000\,bytes and five compiler optimization levels (\texttt{-O0} through \texttt{-Os}).
+Execution time is measured via a 32-bit hardware timer configured as a free-running cycle counter; code size is measured using marginal build variants with \texttt{arm-none-eabi-size}.
+
+Ascon-AEAD128 outperforms AES-128-GCM in execution time at every measured message size, optimization level, and on both boards.
+At \texttt{-O2} and 1000\,bytes, Ascon-AEAD128 requires 168\,921 cycles on the Cortex-M0 against 770\,536 for AES-128-GCM (factor~4.6), and 98\,262 cycles on the Cortex-M4F against 193\,311 (factor~2.0).
+At \texttt{-Os}, Ascon-AEAD128 consumes 4\,376\,bytes of Flash on the Cortex-M0 against 16\,500\,bytes for AES-128-GCM, a factor of approximately~3.8.
+The advantage of Ascon-AEAD128 is consistently larger on the more constrained Cortex-M0, and the code-size advantage holds at the size-optimized level where constrained deployments would build.
+These results provide a quantitative basis for preferring Ascon-AEAD128 over AES-128-GCM on constrained, software-only microcontroller targets.
 
 \tableofcontents
+\listoffigures
+\listoftables
 
 \cleardoublepage%
 \setcounter{page}{1}
 \pagenumbering{arabic}
-\input{main}
+\input{../chapter_1_proposal}
+\input{../chapter_2_proposal}
+\input{../chapter_3_methodology}
+\input{../chapter_4_results}
+\input{../chapter_5_discussion}
+\input{../chapter_6_conclusion}
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}

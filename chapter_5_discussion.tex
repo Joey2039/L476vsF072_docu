@@ -1,0 +1,202 @@
+\chapter{Discussion}
+
+\section{Performance (Research Question 1)}
+
+The first research question asks how the two algorithms compare in execution
+time and throughput across message sizes on each platform.
+The measurements give a clear answer: Ascon-AEAD128 was faster than AES-128-GCM
+at every measured message size, on both boards, and at every optimization level.
+The advantage was present both in the fixed per-call cost that dominates small
+messages and in the per-byte cost that dominates large messages.
+
+The two comparisons are worth separating, because the relevant one depends on
+the message size a deployment actually handles.
+For short messages the fixed per-call cost is decisive.
+At a single byte and \texttt{-O2}, Ascon-AEAD128 cost 7{,}410 cycles against
+25{,}185 cycles for AES-128-GCM on the Cortex-M0, and 4{,}219 against 6{,}470
+cycles on the Cortex-M4F.
+For long messages the per-byte rate is decisive.
+In the large-message region at \texttt{-O2}, Ascon-AEAD128 reached approximately
+169 cycles per byte against 771 for AES-128-GCM on the Cortex-M0, and
+approximately 95 against 189 cycles per byte on the Cortex-M4F.
+Ascon-AEAD128 therefore leads in both comparisons, so the conclusion does not
+depend on the message-size profile of the application.
+
+The reason for the difference lies in the structure of the two algorithms.
+AES in software relies on table lookups for the substitution step, and the GCM
+authentication step performs a multiplication in a binary field, built from many
+smaller operations when no wide hardware multiplier is available.
+Ascon-AEAD128 is built from a permutation of bitwise operations --- exclusive-or,
+bitwise-and, and rotation --- applied to a small state held in registers.
+These operations are native to both cores and require no table memory.
+The single-pass duplex construction also avoids the separate encryption and
+authentication passes that AES-128-GCM performs.
+The measured advantage is the practical consequence of this design difference.
+
+\section{Memory (Research Question 2)}
+
+The second research question asks about the Flash footprint of each
+implementation relative to the constraints of a small microcontroller.
+The answer depends on the optimization level, and the size-optimized level is
+the one relevant to a memory-constrained deployment.
+
+At \texttt{-Os}, Ascon-AEAD128 added 4{,}376 bytes of Flash on the Cortex-M0
+and 4{,}208 bytes on the Cortex-M4F, while AES-128-GCM added 16{,}500 and
+15{,}776 bytes respectively.
+AES-128-GCM therefore required approximately 3.8 times the code space of
+Ascon-AEAD128, consistently on both boards.
+On the Cortex-M0, which has 128\,KB of Flash, the difference between roughly
+4\,KB and roughly 16\,KB is a meaningful fraction of the budget once application
+code is also present.
+The small code size of Ascon-AEAD128 follows from its single permutation and its
+lack of precomputed lookup tables, whereas AES-128-GCM brings the AES tables
+and the field-multiplication code.
+
+It must be noted that this advantage at \texttt{-Os} does not hold at the
+speed-oriented optimization levels, for reasons examined in
+Section~\ref{sec:optlevel}.
+The footprint result is therefore reported at the optimization level that a
+constrained deployment would actually choose, where Ascon-AEAD128 is both
+smaller and, from the timing results, faster.
+
+\section{Optimization Sensitivity (Research Question 3)}
+\label{sec:optlevel}
+
+The third research question asks how the compiler optimization level affects the
+relative performance of the two algorithms.
+The measurements show that the optimization level matters a great deal, in two
+distinct ways.
+
+The first concerns execution time.
+The largest single improvement for both algorithms came from enabling
+optimization at all --- the step from \texttt{-O0} to \texttt{-O1}.
+At 1000 bytes on the Cortex-M0 this step reduced the Ascon-AEAD128 time by a
+factor of about eight and the AES-128-GCM time by a factor of about three.
+This uneven response means the relative advantage of Ascon-AEAD128 is
+understated by any measurement taken at \texttt{-O0}.
+A study that benchmarked only unoptimized code would have reported the two
+algorithms as close --- with a ratio of 1.16 on the Cortex-M4F --- and would
+have missed the larger advantage that appears under the optimization a real
+build would use.
+The choice to sweep the optimization level, rather than report a single level,
+is justified by this observation.
+
+The behavior at the higher levels was not uniform.
+On the Cortex-M4F, AES-128-GCM gained nothing from \texttt{-O3} over
+\texttt{-O2}, consistent with the common observation that aggressive
+optimization yields little for table-driven code on these cores, while
+Ascon-AEAD128 continued to improve at \texttt{-O3}.
+On the Cortex-M0 the pattern was reversed, with AES-128-GCM improving
+substantially at \texttt{-O3} and Ascon-AEAD128 improving only modestly.
+The \texttt{-Os} level was slower than \texttt{-O2} for both algorithms on both
+boards, because size optimization disables the inlining and loop unrolling that
+the cryptographic inner loops benefit from.
+
+The second way the optimization level matters concerns code size, and it is the
+more striking effect.
+The Flash cost of the Ascon-AEAD128 reference implementation varied strongly
+with the optimization level, while the AES-128-GCM cost was comparatively
+stable.
+The Ascon-AEAD128 cost rose from \texttt{-O0} to a peak at \texttt{-O3},
+reaching 43{,}024 bytes on the Cortex-M0 and 34{,}560 bytes on the Cortex-M4F,
+then fell sharply at \texttt{-Os} to roughly 4\,KB.
+The cause is the unrolling of the permutation: at the speed-oriented levels the
+compiler unrolls the permutation rounds into straight-line code, which the
+authenticated-encryption routine includes at several call sites, expanding the
+binary.
+At \texttt{-Os} the compiler keeps the rounds rolled, and the code collapses to
+a small size.
+The same shape appeared on both boards, showing that the effect is a property
+of the implementation and the compiler rather than of the processor.
+
+This links the second and third research questions.
+The footprint advantage of Ascon-AEAD128 is real but conditional on the
+optimization level: it exists at \texttt{-Os} and is reversed at the
+speed-oriented levels.
+The advantage and this condition should be reported together.
+
+\section{Architecture Dependence (Research Question 4)}
+
+The fourth research question asks whether the performance gap between the two
+algorithms differs between the Cortex-M0 and the Cortex-M4F, and what this
+implies for device selection.
+The measurements show that the gap is consistently larger on the weaker core.
+
+At equal clock frequency and at 1000 bytes, the ratio of AES-128-GCM time to
+Ascon-AEAD128 time was about 4.6 at \texttt{-O1} and \texttt{-O2} on the
+Cortex-M0, against about 2.0 at the same levels on the Cortex-M4F.
+At every optimized level the ratio was larger on the Cortex-M0.
+The advantage of Ascon-AEAD128 therefore grows as the processor becomes more
+constrained.
+
+This can be read against the architectural baseline established in the harness
+validation.
+For the plain memory workload the Cortex-M0 was about 2.8 times slower than
+the Cortex-M4F at the same clock.
+If both algorithms simply scaled with this architectural factor, their ratio to
+each other would be the same on both boards.
+The fact that the AES-128-GCM disadvantage grows by more than this factor on
+the Cortex-M0 indicates that AES-128-GCM contains operations that are
+especially costly on the weaker core.
+The field multiplication in the GCM authentication step is the principal
+example: it must be synthesized from many small operations when no wide
+hardware multiplier is present, which is the case on the Cortex-M0.
+Ascon-AEAD128, built from operations the Cortex-M0 executes natively, stays
+closer to the architectural baseline.
+
+The implication for device selection is direct: the more constrained the
+processor, the stronger the case for Ascon-AEAD128 over AES-128-GCM.
+On the lowest-end cores, which are also the most numerous and the most
+cost-sensitive, the advantage is largest.
+
+\section{The Fairness of the Comparison}
+
+The comparison was designed to avoid handicapping either algorithm, and one
+configuration choice deserves explicit defense.
+AES-128-GCM was measured with the small field-multiplication table, as
+disclosed in Section~3.4.1.
+A larger table exists that would improve the AES-128-GCM throughput, at a cost
+of roughly 3.8\,KB of additional RAM that Ascon-AEAD128 does not require.
+The small table was chosen because it represents a genuinely lightweight
+configuration of AES-128-GCM, which matches the constrained-device setting of
+this work.
+On a part with 16\,KB of SRAM, spending close to 4\,KB of RAM on an
+acceleration table is exactly the kind of cost a constrained deployment may
+decline.
+
+The reported AES-128-GCM figures therefore represent the memory-frugal end of
+AES-128-GCM rather than its fastest possible configuration.
+Enabling the larger table would narrow the throughput gap at large messages, at
+a RAM cost Ascon-AEAD128 does not pay, and would not change the code-size or
+small-message conclusions.
+The comparison is thus a fair one between two lightweight configurations, and
+the configuration choice is named and justified so the result cannot be read as
+a weakened AES-128-GCM.
+
+\section{Practical Conclusions}
+
+The results support a consistent practical recommendation for the class of
+devices studied.
+For authenticated encryption on a constrained microcontroller without hardware
+AES acceleration, Ascon-AEAD128 is the stronger choice on the measured criteria:
+it was faster than AES-128-GCM at every message size and optimization level,
+smaller in code at the size-optimized level that such a device would use, and
+its advantage was largest on the most constrained processor.
+
+Two qualifications accompany this recommendation.
+First, the speed advantage and the size advantage do not occur at the same
+optimization level for the reference implementation.
+The size advantage holds at \texttt{-Os}, where Ascon-AEAD128 is both smaller
+and faster than AES-128-GCM, so a deployment that builds for size obtains both
+benefits at once.
+A deployment that builds for speed at \texttt{-O2} or \texttt{-O3} obtains the
+speed advantage but accepts a larger Ascon-AEAD128 code size due to the
+unrolling of the permutation.
+Second, these conclusions concern software-only implementations.
+On a device with a hardware AES accelerator the balance would differ, and that
+case was deliberately outside the scope of this work in order to isolate the
+software comparison.
+
+Within those qualifications, the measurements give a quantitative basis for
+preferring Ascon-AEAD128 on constrained, software-only targets, and they
+quantify how the advantage grows as the device becomes more limited.

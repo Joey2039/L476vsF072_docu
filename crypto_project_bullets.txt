@@ -1,0 +1,60 @@
+TOPIC
+
+- Combined topic: Lightweight cryptography for sensors / edge devices + Benchmark ASCON vs. AES
+- Lightweight cryptography serves as the motivation / context
+- ASCON vs. AES benchmark serves as the concrete case study
+
+PROJECT STRUCTURE
+
+1. Motivation: Lightweight cryptography for sensors / edge devices
+   - Why lightweight crypto? (constrained devices: limited RAM, flash, CPU, energy)
+   - Typical use cases (IoT, sensors, wearables, embedded systems)
+   - NIST Lightweight Cryptography standardization process and ASCON as the winner
+2. Background
+   - AES-128-GCM (established AEAD standard)
+   - ASCON family overview (Ascon-AEAD128, Ascon-Hash256, Ascon-80pq)
+   - Sponge construction vs. block cipher + GCM mode
+3. Case study: Benchmark ASCON vs. AES on embedded hardware
+4. Results, discussion, conclusion, outlook
+
+CONSTRAINTS / SETUP
+
+- Use existing open-source libraries where possible
+  - e.g. official ASCON reference / optimized implementations	446347f21b209f3921c65ece70027c366cbe1693
+  - e.g. mbedTLS AES-128-GCM (107ea89daaefb9867ea9121002fbbdf926780e98)
+- Compile for 32-bit target
+- Run on STM Nucleo board(s) for representative performance measurements
+  - Cortex-M0+ (low end)
+  - Cortex-M4 (mid range, DSP)
+- Toolchain: arm-none-eabi-gcc (document version and flags)
+- Use a hardware timer / DWT cycle counter for µs-resolution measurements
+
+BENCHMARK - CORE
+
+- Primitives to compare: ASCON vs. AES
+- Focus: standard Ascon-128 (Ascon-AEAD128)
+- If possible: outlook on Ascon-80pq for the post-quantum (PQC) use case
+
+BENCHMARK - METRICS
+
+- Memory
+- Performance (runtime)
+  - Input sizes on a logarithmic scale: 1, 10, 100, 1000, (10000) bytes
+  - Runtime resolution in microseconds (µs)
+  - Report throughput (bytes/s or cycles/byte) in addition to absolute time
+  - Extension: compare with different optimization levels (-O0 / -O1 / -O2 / -Os / ...)
+
+BENCHMARK - MODES
+
+- Primary focus: AEAD
+  - Ascon-AEAD128  vs.  AES-128-GCM
+- Optional extension: hashing
+  - Ascon-Hash256  vs.  SHA2-256  or  SHA3-256
+
+
+DELIVERABLES
+
+- Written report (motivation, background, methodology, results, discussion)
+- Source code repository (firmware + measurement scripts)
+- Data/Plots: runtime vs. input size (log-log), memory footprint bar charts, optimization-level comparison
+- Reproducibility instructions (board, toolchain, flags, library versions)
