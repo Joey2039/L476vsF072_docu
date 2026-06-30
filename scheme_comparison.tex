@@ -1,0 +1,134 @@
+% ============================================================================
+% Comparison figure: Ascon-AEAD128 (sponge/duplex) vs. AES-128-GCM (CTR+GHASH)
+% Place in chapters/02_background.tex, Section 2.4.
+%
+% PREAMBLE (add to root file if not already present):
+%   \usepackage{tikz}
+%   \usepackage{amsmath}
+%   \usepackage{subcaption}
+%   \usetikzlibrary{positioning,arrows.meta,calc}
+%
+% Style: American spelling, no dashes in prose. Schematic is intentionally
+% simplified (single message block shown; GHASH length/AAD blocks omitted)
+% to expose the structural contrast, not to be implementation-exact.
+% ============================================================================
+
+\begin{figure}[tb]
+  \centering
+
+  % ---- shared TikZ styles (scoped to this figure) ----
+  \tikzset{
+    prim/.style={draw, fill=gray!55, minimum height=8mm, minimum width=12mm, font=\small},
+    data/.style={draw, fill=white, minimum height=6mm, minimum width=13mm, font=\small, inner sep=3pt},
+    xor/.style={draw, circle, inner sep=0pt, minimum size=4.4mm, font=\small},
+    mul/.style={draw, circle, inner sep=0pt, minimum size=4.4mm, font=\footnotesize},
+    flow/.style={-{Stealth[length=2mm]}, thick},
+    lbl/.style={font=\footnotesize},
+  }
+
+  %==================== (a) Ascon-AEAD128 ====================
+  \begin{subfigure}{\textwidth}
+    \centering
+    \begin{tikzpicture}
+      \node[prim] (i)  at (0,0)            {$p^{12}$};
+      \node[prim] (ad) [right=14mm of i]   {$p^{8}$};
+      \node[prim] (pt) [right=14mm of ad]  {$p^{8}$};
+      \node[xor]  (xk) [right=8mm of pt]   {$+$};
+      \node[prim] (f)  [right=8mm of xk]   {$p^{12}$};
+
+      \draw[flow] (i) -- (ad);
+      \draw[flow] (ad) -- (pt);
+      \draw[flow] (pt) -- (xk);
+      \draw[flow] (xk) -- (f);
+      \node[lbl] at ($(xk)+(0,0.72)$) {$K$};
+      \draw[flow] ($(xk)+(0,0.57)$) -- (xk);
+
+      \node[lbl] at ($(i)+(0,-0.85)$)  {Initialization};
+      \node[lbl] at ($(ad)+(0,-0.85)$) {Assoc.\ data};
+      \node[lbl] at ($(pt)+(0,-0.85)$) {Plaintext};
+      \node[lbl] at ($(f)+(0,-0.85)$)  {Finalization};
+
+      \node[data] (ivkn) [above=8mm of i] {$\mathit{IV}\|K\|N$};
+      \draw[flow] (ivkn) -- (i);
+
+      \node[xor]  (xa) [above=8mm of ad] {$+$};
+      \node[data] (a)  [above=5mm of xa] {$A_i$};
+      \draw[flow] (a) -- (xa);
+      \draw[flow] (xa) -- (ad);
+
+      \node[xor]  (xp) [above=8mm of pt] {$+$};
+      \node[data] (p)  [above=5mm of xp] {$P_i$};
+      \draw[flow] (p) -- (xp);
+      \draw[flow] (xp) -- (pt);
+      \node[data] (c)  [right=6mm of xp] {$C_i$};
+      \draw[flow] (xp) -- (c);
+
+      \node[data] (tag) [right=8mm of f] {Tag};
+      \draw[flow] (f) -- (tag);
+    \end{tikzpicture}
+    \caption{Ascon-AEAD128: a single permutation $p$ absorbs and squeezes a
+      320-bit state across four phases. Intermediate rounds use $p^{8}$,
+      initialization and finalization use $p^{12}$.}
+    \label{fig:scheme-ascon}
+  \end{subfigure}
+
+  \vspace{4mm}
+
+  %==================== (b) AES-128-GCM ====================
+  \begin{subfigure}{\textwidth}
+    \centering
+    \begin{tikzpicture}
+      \node[data] (c0) at (0,0)             {Counter 0};
+      \node[prim, minimum width=9mm] (inc1) [right=6mm of c0] {incr};
+      \node[data] (c1) [right=6mm of inc1]  {Counter 1};
+      \node[prim, minimum width=9mm] (inc2) [right=6mm of c1] {incr};
+      \node[data] (c2) [right=6mm of inc2]  {Counter 2};
+      \draw[flow] (c0) -- (inc1);
+      \draw[flow] (inc1) -- (c1);
+      \draw[flow] (c1) -- (inc2);
+      \draw[flow] (inc2) -- (c2);
+
+      \node[prim] (e0) [below=7mm of c0] {$E_K$};
+      \node[prim] (e1) [below=7mm of c1] {$E_K$};
+      \node[prim] (e2) [below=7mm of c2] {$E_K$};
+      \draw[flow] (c0) -- (e0);
+      \draw[flow] (c1) -- (e1);
+      \draw[flow] (c2) -- (e2);
+
+      \node[xor] (x1) [below=7mm of e1] {$+$};
+      \node[xor] (x2) [below=7mm of e2] {$+$};
+      \draw[flow] (e1) -- (x1);
+      \draw[flow] (e2) -- (x2);
+      \node[data] (p1) [left=7mm of x1] {Plaintext 1};
+      \node[data] (p2) [left=7mm of x2] {Plaintext 2};
+      \draw[flow] (p1) -- (x1);
+      \draw[flow] (p2) -- (x2);
+      \node[data] (ct1) [below=6mm of x1] {Ciphertext 1};
+      \node[data] (ct2) [below=6mm of x2] {Ciphertext 2};
+      \draw[flow] (x1) -- (ct1);
+      \draw[flow] (x2) -- (ct2);
+
+      \node[mul] (m1) [below=7mm of ct1] {$\otimes$};
+      \node[mul] (m2) [below=7mm of ct2] {$\otimes$};
+      \draw[flow] (ct1) -- (m1);
+      \draw[flow] (ct2) -- (m2);
+      \draw[flow] (m1) -- (m2);
+      \node[lbl] at ($(m1)!0.5!(m2)+(0,0.28)$) {GHASH over $\mathrm{GF}(2^{128})$};
+
+      \node[xor] (xt) [right=10mm of m2] {$+$};
+      \draw[flow] (m2) -- (xt);
+      \draw[flow] (e0) |- ($(xt)+(0,-0.6)$) -- (xt);
+      \node[data] (tag2) [right=7mm of xt] {Tag};
+      \draw[flow] (xt) -- (tag2);
+    \end{tikzpicture}
+    \caption{AES-128-GCM: the block cipher $E_K$ runs in counter mode to produce
+      a keystream, and a separate GHASH multiplication in $\mathrm{GF}(2^{128})$
+      authenticates the ciphertext into the tag.}
+    \label{fig:scheme-gcm}
+  \end{subfigure}
+
+  \caption{Structural comparison of the two schemes. Simplified schematics by the
+  author, following the AES-GCM specification \cite{FIPS197,NISTSP80038D} and the
+  Ascon standard \cite{NISTSP800232,ASCONSpec}.}
+  \label{fig:scheme-comparison}
+\end{figure}

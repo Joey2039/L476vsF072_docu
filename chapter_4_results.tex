@@ -80,18 +80,18 @@ At \texttt{-Os} both algorithms are slower than at \texttt{-O2} on both boards.
   \begin{tabular}{lrrrrrr}
     \toprule
     Level &
-    \multicolumn{1}{c}{M0 ASCON} &
     \multicolumn{1}{c}{M0 AES} &
+    \multicolumn{1}{c}{M0 ASCON} &
     \multicolumn{1}{c}{M0 ratio} &
-    \multicolumn{1}{c}{M4 ASCON} &
     \multicolumn{1}{c}{M4 AES} &
+    \multicolumn{1}{c}{M4 ASCON} &
     \multicolumn{1}{c}{M4 ratio} \\
     \midrule
-    \texttt{-O0} & 1{,}387{,}063 & 2{,}661{,}457 & 1.92 & 726{,}789 & 845{,}537 & 1.16 \\
-    \texttt{-O1} &   170{,}741   &   792{,}911   & 4.64 & 104{,}422 & 242{,}980 & 2.33 \\
-    \texttt{-O2} &   168{,}921   &   770{,}536   & 4.56 &  98{,}262 & 193{,}311 & 1.97 \\
-    \texttt{-O3} &   145{,}888   &   485{,}227   & 3.33 &  70{,}194 & 193{,}283 & 2.75 \\
-    \texttt{-Os} &   268{,}899   &   787{,}284   & 2.93 & 139{,}993 & 269{,}250 & 1.92 \\
+    \texttt{-O0} & 2{,}661{,}457 & 1{,}387{,}063 & 1.92 & 845{,}537 & 726{,}789 & 1.16 \\
+    \texttt{-O1} &   792{,}911   &   170{,}741   & 4.64 & 242{,}980 & 104{,}422 & 2.33 \\
+    \texttt{-O2} &   770{,}536   &   168{,}921   & 4.56 & 193{,}311 &  98{,}262 & 1.97 \\
+    \texttt{-O3} &   485{,}227   &   145{,}888   & 3.33 & 193{,}283 &  70{,}194 & 2.75 \\
+    \texttt{-Os} &   787{,}284   &   268{,}899   & 2.93 & 269{,}250 & 139{,}993 & 1.92 \\
     \bottomrule
   \end{tabular}
 \end{table}
