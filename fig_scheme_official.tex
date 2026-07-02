@@ -1,0 +1,146 @@
+% ============================================================================
+% Combined comparison figure for Section 2.4
+%   (a) Ascon-AEAD128  -- official figure (Ascon spec, drawn with the
+%       cipher/sponge TikZ libraries by M. Eichlseder). Only the AEAD-encryption
+%       subfigure of ascon.tex is used here.
+%   (b) AES-128-GCM    -- figure by D. Maimut, "GCM encryption", from
+%       "TikZ for Cryptographers" (J. Jean), CC0. Recolored from red to grey to
+%       match (a). To restore the original colors: black!8 -> red!10,
+%       black!30 -> red!40.
+%
+% PREAMBLE (root file):
+%   \usepackage{tikz}
+%   \usepackage{graphicx}      % for \resizebox (usually already loaded)
+%   \usepackage{subcaption}
+%   \usetikzlibrary{calc,cipher,sponge}
+%
+% PROJECT FILES required next to the root .tex (or on TEXINPUTS):
+%   tikzlibrarycipher.code.tex
+%   tikzlibrarysponge.code.tex
+%
+% SIZE TUNING: the two \resizebox width fractions below are the knobs.
+% ============================================================================
+
+\begin{figure}[p]
+  \centering
+
+  %====================== (a) Ascon-AEAD128 (official) ======================
+  \begin{subfigure}{\textwidth}
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}
+      \SpongeInitInner{$\text{IV} \| K \| N$}{$p^a$}
+      \draw (P.south) +(0,-1) node[spongephase] (phase) {Initialization};
+      \SpongeXorInner{$\hskip-4pt 0^* \| K$}
+      \SpongeStep\SpongePhaseSep
+
+      \SpongeAbsorb{$A_1$}{$p^b$}{$r$}{$c$}
+      \SpongeEtc
+      \SpongeAbsorb{$A_s$}{$p^b$}{$r$}{$c$}
+      \draw (x|-phase) node[spongephase] {Associated Data};
+      \SpongeXorInner{$\hskip-4pt 0^* \| 1$}
+      \SpongeStep\SpongePhaseSep
+
+      \SpongeEncrypt{$P_1$}{$C_1$}{$p^b$}{$r$}{$c$}
+      \SpongeEtc
+      \SpongeEncrypt{\hskip-8pt$P_{t\!-\!1}$}{$C_{t\!-\!1}$\hskip-8pt\null}{$p^b$}{$r$}{$c$}
+      \draw (x|-phase) node[spongephase] {Plaintext};
+      \SpongeEncryptFinal{$P_t$}{$C_t$}{$r$}{$c$}
+      \SpongeStep\SpongePhaseSep
+
+      \SpongeXorInner{$K \| 0^* \hskip-4pt$}
+      \SpongeStep
+      \SpongePermute{$p^a$}
+      \draw (P|-phase) node[spongephase] {Finalization};
+      \SpongeStep
+      \draw (Si-|Sc) coordinate[xor] (x)
+            (x|-I) node[var] (Kf) {$K$}
+            (x|-O) node[var] (T) {$T$};
+      \draw[next] (P.yinner) -- (x);
+      \draw[next] (Kf) -- (x);
+      \draw[next] (x)  -- node[bitwidth, swap] {128} (T);
+    \end{tikzpicture}%
+    }
+    \caption{Ascon-AEAD128 mode of operation. For Ascon-AEAD128, $a=12$ and $b=8$.}
+    \label{fig:scheme-ascon}
+  \end{subfigure}
+
+  \vspace{6mm}
+
+  %====================== (b) AES-128-GCM (Maimut, CC0) ======================
+  \begin{subfigure}{\textwidth}
+    \centering
+    \resizebox{0.6\textwidth}{!}{%
+    \begin{tikzpicture}
+      \foreach \x in {0,1,2} {
+          \node (f\x) at ($\x*(5cm,0)$) [minimum size=0.75cm, minimum height=1.0cm, rounded corners=1ex,fill=black!8,draw] {Counter$_\x$};
+          \node (c\x) [minimum size=0.75cm, minimum height=1.0cm, rounded corners=1ex,fill=black!30,draw] [below of=f\x, node distance=1.5cm] {\textsc{Enc}$_k$};
+          \draw[-latex] (f\x) -- (c\x);
+      }
+
+      \node (incr1) [minimum size=0.5cm,minimum size=0.75cm, rounded corners=1ex,draw][right of=f0, node distance=2.5cm] {incr};
+      \node (incr2) [minimum size=0.5cm,minimum size=0.75cm, rounded corners=1ex,draw][right of=f1, node distance=2.5cm] {incr};
+      \draw[-latex] (f0) -- (incr1);
+      \draw[-latex] (incr1) -- (f1);
+      \draw[-latex] (f1) -- (incr2);
+      \draw[-latex] (incr2) -- (f2);
+
+      \foreach \x in {1, 2} {
+          \node (p\x) [below of=c\x, node distance=1.3cm, circle, draw] {};
+          \node (m\x) [below of=p\x, node distance=1.3cm, minimum size=0.75cm, minimum height=1.0cm, rounded corners=1ex, fill=black!8, draw] {Ciphertext$_\x$};
+          \node (k\x) [below of=m\x, node distance=1.3cm, circle, draw] {};
+          \draw[-] (p\x.north) -- (p\x.south);
+          \draw[-] (p\x.east) -- (p\x.west);
+          \draw[-] (k\x.north) -- (k\x.south);
+          \draw[-] (k\x.east) -- (k\x.west);
+          \draw[-latex] (p\x) -- (m\x);
+          \draw[-latex] (m\x) -- (k\x);
+      }
+
+      \node (b1) [right of=k1, node distance=2.5cm, minimum size=0.75cm, rounded corners=1ex, draw] {mult$_H$};
+      \node (b2) [below of=k2, node distance=1.3cm, minimum size=0.75cm, rounded corners=1ex, draw] {mult$_H$};
+      \draw[-latex] (k1) -- (b1);
+      \draw[-latex] (k2) -- (b2);
+
+      \draw[-latex] (c1) -- (p1);
+      \draw[-latex] (c2) -- (p2);
+      \node (iv1) [left of=p1, node distance=1.5cm, minimum size=0.75cm, minimum height=1.0cm, rounded corners=1ex, fill=black!8, draw] {Plaintext$_1$};
+      \draw[-latex] (iv1) -- (p1);
+      \node (iv2) [left of=p2, node distance=1.5cm, minimum size=0.75cm, minimum height=1.0cm, rounded corners=1ex, fill=black!8, draw] {Plaintext$_2$};
+      \draw[-latex] (iv2) -- (p2);
+
+      \node (bb) [left of=k1, node distance=1.4cm, minimum size=0.75cm, rounded corners=1ex, draw] {mult$_H$};
+      \node (ad) [left of=bb, node distance=2.2cm, minimum size=0.75cm, minimum height=1.0cm, rounded corners=1ex, fill=black!8, draw] {Auth Data$_1$};
+      \draw[-latex] (bb) -- (k1);
+      \draw[-latex] (ad) -- (bb);
+
+      \node (circ1) [below of=b2, node distance=1.3cm, circle, draw] {};
+      \node (bbb) [below of=circ1, node distance=1.3cm, minimum size=0.75cm, rounded corners=1ex, draw] {mult$_H$};
+      \node (circ2) [below of=bbb, node distance=1.3cm, circle, draw] {};
+      \node (at) [below of=circ2, node distance=1.3cm, minimum size=2cm, minimum height=1.0cm, rounded corners=1ex, fill=black!8, draw] {Auth Tag};
+      \node (concat) [left of=circ1, node distance=2.0cm, minimum size=0.75cm, minimum height=1.0cm, rounded corners=1ex, fill=black!8, draw] {len($A$)$||$len($C$)};
+
+      \draw[-latex] (b2) -- (circ1);
+      \draw[-latex] (circ1) -- (bbb);
+      \draw[-latex] (bbb) -- (circ2);
+      \draw[-latex] (circ2) -- (at);
+      \draw[-] (circ1.north) -- (circ1.south);
+      \draw[-] (circ1.east) -- (circ1.west);
+      \draw[-] (circ2.north) -- (circ2.south);
+      \draw[-] (circ2.east) -- (circ2.west);
+      \draw[-latex] (concat) -- (circ1);
+      \draw[-latex] (b1) -- (k2);
+      \draw[-latex] ($(c0)+(0,-0.5cm)$) |- ($(circ2) + (-0.2cm,0cm)$);
+    \end{tikzpicture}%
+    }
+    \caption{AES-128-GCM mode of operation.}
+    \label{fig:scheme-gcm}
+  \end{subfigure}
+
+  \caption{Structural comparison of the two authenticated-encryption schemes.
+    Panel~(a) shows the Ascon mode of operation from the Ascon specification
+    \cite{ASCONSpec}. Panel~(b) is adapted from a figure by D.~Maimut in
+    ``TikZ for Cryptographers'' \cite{jean2016tikz} (CC0), following the GCM
+    specification \cite{NISTSP80038D}.}
+  \label{fig:scheme-comparison}
+\end{figure}
