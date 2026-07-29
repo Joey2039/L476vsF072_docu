@@ -50,9 +50,9 @@
 \newcommand{\student}{Johannes Zipper}
 \newcommand{\matrnr}{22411902}
 \newcommand{\stammnr}{} % Unset this variable if you only have a (single) matriculation number
-\newcommand{\submissiondate}{26.\ Juni 2026}
+\newcommand{\submissiondate}{29.\ July 2026}
 \newcommand{\supervisor}{Prof.~Dr.~Martin Schramm}
-\newcommand{\secsupervisor}{} % Unset this variable if no second supervisor is required
+\newcommand{\secsupervisor}{Tobias Spieker} % Unset this variable if no second supervisor is required
 \newcommand{\faculty}{Angewandte Informatik}
 
 % Select your course of studies here
@@ -82,15 +82,48 @@
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-This thesis presents a measurement-based comparison of Ascon-AEAD128 and AES-128-GCM on two constrained ARM Cortex-M microcontrollers representative of the automotive embedded-systems spectrum: the NUCLEO-F072RB (Cortex-M0, 48\,MHz, 16\,KB SRAM) and the NUCLEO-L476RG (Cortex-M4F, clocked at 48\,MHz to match the F072, 128\,KB SRAM).
-Both algorithms are evaluated as software-only implementations using the official ASCON reference implementation and mbedTLS, respectively, across message sizes from 1 to 10\,000\,bytes and five compiler optimization levels (\texttt{-O0} through \texttt{-Os}).
-Execution time is measured via a 32-bit hardware timer configured as a free-running cycle counter; code size is measured using marginal build variants with \texttt{arm-none-eabi-size}.
+Authenticated encryption is a baseline requirement for in-vehicle
+communication. Standards such as AUTOSAR SecOC define message authentication
+across the vehicle network, and ISO/SAE 21434 places such measures inside a
+documented cybersecurity risk management process. In practice the algorithm
+used is almost always AES in Galois/Counter Mode. A large share of automotive
+nodes, however, are low-cost 32-bit microcontrollers without a hardware
+cryptographic accelerator. On these parts AES-128-GCM runs entirely in
+software, including the GHASH field multiplication, which maps poorly onto a
+minimal instruction set. NIST standardized Ascon in SP 800-232 as a lightweight
+alternative, but quantitative performance data on representative Cortex-M
+hardware is scarce. This work addresses that gap.
 
-Ascon-AEAD128 outperforms AES-128-GCM in execution time at every measured message size, optimization level, and on both boards.
-At \texttt{-O2} and 1000\,bytes, Ascon-AEAD128 requires 168\,921 cycles on the Cortex-M0 against 770\,536 for AES-128-GCM (factor~4.6), and 98\,262 cycles on the Cortex-M4F against 193\,311 (factor~2.0).
-At \texttt{-Os}, Ascon-AEAD128 consumes 4\,376\,bytes of Flash on the Cortex-M0 against 16\,500\,bytes for AES-128-GCM, a factor of approximately~3.8.
-The advantage of Ascon-AEAD128 is consistently larger on the more constrained Cortex-M0, and the code-size advantage holds at the size-optimized level where constrained deployments would build.
-These results provide a quantitative basis for preferring Ascon-AEAD128 over AES-128-GCM on constrained, software-only microcontroller targets.
+The evaluation uses the NUCLEO-F072RB (Cortex-M0, 128 KB Flash, 16 KB SRAM)
+and the NUCLEO-L476RG (Cortex-M4F), with the Cortex-M4F clocked at 48 MHz to
+match the Cortex-M0 ceiling, so that timing differences reflect architecture
+rather than clock frequency. Both algorithms are measured as software-only
+implementations, using the official Ascon reference code and mbedTLS 3.6.2.
+mbedTLS is configured with the small four-bit GHASH table, which is the
+memory-frugal configuration of AES-GCM rather than its speed ceiling. Execution
+time is taken from a 32-bit free-running timer at one tick per cycle, with
+interrupts masked and one warmup iteration discarded. Both implementations are
+verified against published known-answer test vectors on target. The matrix
+covers message sizes from 1 to 10\,000 bytes and the optimization levels -O0
+through -Os.
+
+Ascon-AEAD128 was faster than AES-128-GCM at every measured message size, on
+both boards, and at every optimization level. The advantage appears in the
+fixed per-call cost that dominates short messages and in the per-byte cost that
+dominates long messages, so it does not depend on the message profile of the
+application. The largest ratio is approximately 4.6 in favor of Ascon-AEAD128,
+at -O1 and -O2 on the Cortex-M0, against approximately 2.0 on the Cortex-M4F.
+
+At -Os, the level a memory-constrained deployment would realistically choose,
+AES-128-GCM required approximately 3.8 times the Flash of Ascon-AEAD128 on both
+boards. At -O1 through -O3 the relation inverts, because the compiler unrolls
+the permutation, so the speed advantage and the code-size advantage are
+obtained together only when building for size. Within the reported build
+configuration the results give a quantitative basis for preferring
+Ascon-AEAD128 on constrained, software-only targets, with the advantage growing
+as the target becomes more constrained.
+
+\input{ai_declaration}
 
 \tableofcontents
 \listoffigures
